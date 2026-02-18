@@ -1,0 +1,38 @@
+name: Build latest cilium bpf programs
+on:
+  schedule:
+    - cron: '0 0 * * 2'
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+
+      - name: Install container prerequisites
+        run: |
+          apt-get update -y
+          apt-get install -y sudo git gh ca-certificates build-essential file flex texinfo wget xz-utils zstd
+
+      - uses: actions/checkout@v4
+
+      - name: Build Cilium bpf programs
+        uses: libbpf/ci/build-cilium@main
+        with:
+          output-dir: ${{ github.workspace }}/cilium-bpf
+
+      - name: Mark workspace as safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: ./update-latest-release.sh cilium-bpf
